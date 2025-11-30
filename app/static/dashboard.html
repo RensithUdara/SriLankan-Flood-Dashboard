@@ -822,19 +822,117 @@
             background: #0f3460;
         }
 
+        .search-container {
+            position: relative;
+            margin-top: 0.5rem;
+        }
+
         .search-box {
             width: 100%;
-            padding: 0.5rem;
+            padding: 0.5rem 2.5rem 0.5rem 0.5rem;
             border: none;
             border-radius: 4px;
             background: #1a1a2e;
             color: #fff;
-            margin-top: 0.5rem;
             font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .search-box:focus {
+            background: #2a2a3e;
+            box-shadow: 0 0 0 2px #6db3f2;
+            outline: none;
         }
 
         .search-box::placeholder {
             color: #888;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0.25rem;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .search-clear:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #16213e;
+            border: 1px solid #333;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-suggestions.show {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .suggestion-item:hover {
+            background: #0f3460;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-main {
+            font-weight: 600;
+        }
+
+        .suggestion-detail {
+            color: #888;
+            font-size: 0.7rem;
+        }
+
+        .suggestion-status {
+            font-size: 0.6rem;
+            padding: 0.125rem 0.25rem;
+            border-radius: 8px;
+        }
+
+        .search-stats {
+            padding: 0.5rem;
+            font-size: 0.7rem;
+            color: #888;
+            text-align: center;
+            border-top: 1px solid #333;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .search-highlight {
+            background: rgba(255, 193, 7, 0.3);
+            padding: 0.1rem 0.2rem;
+            border-radius: 2px;
         }
 
         .filter-section {
@@ -1005,8 +1103,12 @@
                 Monitoring Stations
                 <div class="update-time" id="update-time"></div>
 
-                <input type="text" class="search-box" id="station-search" placeholder="Search stations or rivers..."
-                    onkeyup="filterStations()">
+                <div class="search-container">
+                    <input type="text" class="search-box" id="station-search" placeholder="Search stations, rivers, or basins..." 
+                           onkeyup="handleSearch(event)" onfocus="showSearchSuggestions()" onblur="hideSearchSuggestions()">
+                    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">✕</button>
+                    <div class="search-suggestions" id="search-suggestions"></div>
+                </div>
 
                 <div class="filter-section">
                     <h4>Alert Level</h4>
