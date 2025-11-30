@@ -803,39 +803,39 @@
             renderStationList(allLevels);
         };
 
-        window.filterByBasin = function() {
+        window.filterByBasin = function () {
             currentBasinFilter = document.getElementById('basin-filter').value;
             updateRiverDropdown();
             renderStationList(allLevels);
         };
 
-        window.filterByRiver = function() {
+        window.filterByRiver = function () {
             currentRiverFilter = document.getElementById('river-filter').value;
             renderStationList(allLevels);
         };
 
-        window.filterStations = function() {
+        window.filterStations = function () {
             searchQuery = document.getElementById('station-search').value.toLowerCase();
             renderStationList(allLevels);
         };
 
         function updateBasinDropdown(basins) {
             const select = document.getElementById('basin-filter');
-            select.innerHTML = '<option value="ALL">All Basins</option>' + 
+            select.innerHTML = '<option value="ALL">All Basins</option>' +
                 basins.map(basin => `<option value="${basin.name}">${basin.name}</option>`).join('');
         }
 
         function updateRiverDropdown() {
             const select = document.getElementById('river-filter');
             let rivers = allRivers;
-            
+
             if (currentBasinFilter !== 'ALL') {
                 rivers = rivers.filter(r => r.river_basin_name === currentBasinFilter);
             }
-            
-            select.innerHTML = '<option value="ALL">All Rivers</option>' + 
+
+            select.innerHTML = '<option value="ALL">All Rivers</option>' +
                 rivers.map(river => `<option value="${river.name}">${river.name}</option>`).join('');
-            
+
             // Reset river filter if current selection is not in filtered list
             if (currentRiverFilter !== 'ALL' && !rivers.find(r => r.name === currentRiverFilter)) {
                 currentRiverFilter = 'ALL';
@@ -848,9 +848,9 @@
             renderStationList(levels);
         }
 
-        window.toggleFloodMap = function() {
+        window.toggleFloodMap = function () {
             const button = document.getElementById('flood-map-toggle');
-            
+
             if (isFloodMapVisible) {
                 if (floodMapOverlay) {
                     map.removeLayer(floodMapOverlay);
@@ -863,12 +863,12 @@
                 // Add flood map overlay
                 const imageUrl = `${API_BASE}/levels/map`;
                 const imageBounds = [[5.9, 79.5], [9.9, 81.9]]; // Approximate Sri Lanka bounds
-                
+
                 floodMapOverlay = L.imageOverlay(imageUrl, imageBounds, {
                     opacity: 0.7,
                     interactive: false
                 }).addTo(map);
-                
+
                 button.textContent = '❌ Hide Map';
                 button.classList.add('active');
                 isFloodMapVisible = true;
@@ -880,12 +880,12 @@
 
             // Apply all filters
             let filteredLevels = levels;
-            
+
             // Alert level filter
             if (currentFilter !== 'ALL') {
                 filteredLevels = filteredLevels.filter(l => l.alert_status === currentFilter);
             }
-            
+
             // Basin filter
             if (currentBasinFilter !== 'ALL') {
                 const river = allRivers.find(r => r.name === l.river_name);
@@ -894,16 +894,16 @@
                     return river && river.river_basin_name === currentBasinFilter;
                 });
             }
-            
+
             // River filter
             if (currentRiverFilter !== 'ALL') {
                 filteredLevels = filteredLevels.filter(l => l.river_name === currentRiverFilter);
             }
-            
+
             // Search filter
             if (searchQuery) {
-                filteredLevels = filteredLevels.filter(l => 
-                    l.station_name.toLowerCase().includes(searchQuery) || 
+                filteredLevels = filteredLevels.filter(l =>
+                    l.station_name.toLowerCase().includes(searchQuery) ||
                     l.river_name.toLowerCase().includes(searchQuery)
                 );
             }
@@ -926,7 +926,7 @@
                 const trendClass = level.rising_or_falling?.toLowerCase() || '';
                 const trendIcon = level.rising_or_falling === 'Rising' ? '↑' :
                     level.rising_or_falling === 'Falling' ? '↓' : '';
-                
+
                 const station = allStations.find(s => s.name === level.station_name);
                 const river = allRivers.find(r => r.name === level.river_name);
                 const floodScore = level.flood_score;
