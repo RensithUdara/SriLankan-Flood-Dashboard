@@ -1410,34 +1410,34 @@
             const input = event.target;
             const value = input.value;
             const clearBtn = document.getElementById('search-clear');
-            
+
             // Show/hide clear button
             clearBtn.style.display = value ? 'block' : 'none';
-            
+
             // Handle keyboard navigation
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 navigateSuggestions(event.key === 'ArrowDown' ? 1 : -1);
                 return;
             }
-            
+
             if (event.key === 'Enter') {
                 event.preventDefault();
                 selectCurrentSuggestion();
                 return;
             }
-            
+
             if (event.key === 'Escape') {
                 hideSearchSuggestions();
                 input.blur();
                 return;
             }
-            
+
             // Clear previous timeout
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
             }
-            
+
             // Debounce search
             searchTimeout = setTimeout(() => {
                 searchQuery = value.toLowerCase();
@@ -1463,7 +1463,7 @@
         window.clearSearch = function () {
             const input = document.getElementById('station-search');
             const clearBtn = document.getElementById('search-clear');
-            
+
             input.value = '';
             searchQuery = '';
             clearBtn.style.display = 'none';
@@ -1474,23 +1474,23 @@
 
         function updateSearchSuggestions(query) {
             const suggestions = document.getElementById('search-suggestions');
-            
+
             if (query.length < 1) {
                 suggestions.classList.remove('show');
                 return;
             }
-            
+
             const matches = findSearchMatches(query);
-            
+
             if (matches.length === 0) {
                 suggestions.innerHTML = '<div class="search-stats">No matches found</div>';
                 suggestions.classList.add('show');
                 return;
             }
-            
+
             const maxSuggestions = 8;
             const displayMatches = matches.slice(0, maxSuggestions);
-            
+
             suggestions.innerHTML = displayMatches.map((match, index) => {
                 const statusClass = match.alert_status.toLowerCase().replace('_', '-');
                 return `
@@ -1509,21 +1509,21 @@
                     </div>
                 `;
             }).join('');
-            
+
             // Add stats footer
             if (matches.length > maxSuggestions) {
                 suggestions.innerHTML += `<div class="search-stats">Showing ${maxSuggestions} of ${matches.length} matches</div>`;
             } else {
                 suggestions.innerHTML += `<div class="search-stats">${matches.length} match${matches.length !== 1 ? 'es' : ''} found</div>`;
             }
-            
+
             suggestions.classList.add('show');
             selectedSuggestion = -1;
         }
 
         function findSearchMatches(query) {
             const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
-            
+
             return allLevels.map(level => {
                 const river = allRivers.find(r => r.name === level.river_name);
                 return {
@@ -1537,28 +1537,28 @@
                     level.basin,
                     level.alert_status
                 ].filter(Boolean).join(' ').toLowerCase();
-                
+
                 return searchTerms.every(term => searchableText.includes(term));
             }).sort((a, b) => {
                 // Prioritize exact matches and alert status
                 const aExact = a.station_name.toLowerCase().includes(query);
                 const bExact = b.station_name.toLowerCase().includes(query);
-                
+
                 if (aExact && !bExact) return -1;
                 if (!aExact && bExact) return 1;
-                
+
                 // Sort by alert severity
                 const severityOrder = { 'MAJOR': 0, 'MINOR': 1, 'ALERT': 2, 'NORMAL': 3, 'NO_DATA': 4 };
                 const aOrder = severityOrder[a.alert_status] || 5;
                 const bOrder = severityOrder[b.alert_status] || 5;
-                
+
                 return aOrder - bOrder;
             });
         }
 
         function highlightMatch(text, query) {
             if (!text || !query) return text || '';
-            
+
             const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
             return text.replace(regex, '<span class="search-highlight">$1</span>');
         }
@@ -1566,21 +1566,21 @@
         function navigateSuggestions(direction) {
             const suggestions = document.querySelectorAll('.suggestion-item');
             if (suggestions.length === 0) return;
-            
+
             // Remove previous selection
             if (selectedSuggestion >= 0 && selectedSuggestion < suggestions.length) {
                 suggestions[selectedSuggestion].style.background = '';
             }
-            
+
             // Update selection
             selectedSuggestion += direction;
-            
+
             if (selectedSuggestion < 0) {
                 selectedSuggestion = suggestions.length - 1;
             } else if (selectedSuggestion >= suggestions.length) {
                 selectedSuggestion = 0;
             }
-            
+
             // Highlight new selection
             suggestions[selectedSuggestion].style.background = '#0f3460';
             suggestions[selectedSuggestion].scrollIntoView({ block: 'nearest' });
