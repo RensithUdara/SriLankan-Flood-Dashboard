@@ -660,10 +660,18 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // v3 - with filters
+        // v4 - Enhanced with all API data
         const API_BASE = window.location.origin;
         let currentFilter = 'ALL';
+        let currentBasinFilter = 'ALL';
+        let currentRiverFilter = 'ALL';
+        let searchQuery = '';
         let allLevels = [];
+        let allStations = [];
+        let allRivers = [];
+        let allBasins = [];
+        let floodMapOverlay = null;
+        let isFloodMapVisible = false;
 
         // Initialize map centered on Sri Lanka
         const map = L.map('map').setView([7.8731, 80.7718], 8);
@@ -741,6 +749,36 @@
             }
         }
 
+        async function fetchRivers() {
+            try {
+                const response = await fetch(`${API_BASE}/rivers`);
+                return await response.json();
+            } catch (e) {
+                console.error('Failed to fetch rivers:', e);
+                return [];
+            }
+        }
+
+        async function fetchBasins() {
+            try {
+                const response = await fetch(`${API_BASE}/basins`);
+                return await response.json();
+            } catch (e) {
+                console.error('Failed to fetch basins:', e);
+                return [];
+            }
+        }
+
+        async function fetchStationHistory(stationName, limit = 10) {
+            try {
+                const response = await fetch(`${API_BASE}/levels/history/${encodeURIComponent(stationName)}?limit=${limit}`);
+                return await response.json();
+            } catch (e) {
+                console.error('Failed to fetch station history:', e);
+                return [];
+            }
+        }
+
         function updateHeaderStats(summary) {
             const container = document.getElementById('header-stats');
             const order = ['MAJOR', 'MINOR', 'ALERT', 'NORMAL'];
@@ -748,7 +786,7 @@
             container.innerHTML = order.map(level => {
                 const item = summary.find(s => s.alert_level === level);
                 const count = item ? item.count : 0;
-                return `<span class="stat-badge stat-${level.toLowerCase()}">${level}: ${count}</span>`;
+                return `<span class="stat-badge stat-${level.toLowerCase()}" onclick="setFilter('${level}')" title="Click to filter ${level.toLowerCase()} alerts">${level}: ${count}</span>`;
             }).join('');
         }
 
@@ -765,18 +803,109 @@
             renderStationList(allLevels);
         };
 
+        window.filterByBasin = function() {
+            currentBasinFilter = document.getElementById('basin-filter').value;
+            updateRiverDropdown();
+            renderStationList(allLevels);
+        };
+
+        window.filterByRiver = function() {
+            currentRiverFilter = document.getElementById('river-filter').value;
+            renderStationList(allLevels);
+        };
+
+        window.filterStations = function() {
+            searchQuery = document.getElementById('station-search').value.toLowerCase();
+            renderStationList(allLevels);
+        };
+
+        function updateBasinDropdown(basins) {
+            const select = document.getElementById('basin-filter');
+            select.innerHTML = '<option value="ALL">All Basins</option>' + 
+                basins.map(basin => `<option value="${basin.name}">${basin.name}</option>`).join('');
+        }
+
+        function updateRiverDropdown() {
+            const select = document.getElementById('river-filter');
+            let rivers = allRivers;
+            
+            if (currentBasinFilter !== 'ALL') {
+                rivers = rivers.filter(r => r.river_basin_name === currentBasinFilter);
+            }
+            
+            select.innerHTML = '<option value="ALL">All Rivers</option>' + 
+                rivers.map(river => `<option value="${river.name}">${river.name}</option>`).join('');
+            
+            // Reset river filter if current selection is not in filtered list
+            if (currentRiverFilter !== 'ALL' && !rivers.find(r => r.name === currentRiverFilter)) {
+                currentRiverFilter = 'ALL';
+                select.value = 'ALL';
+            }
+        }
+
         function updateStationList(levels) {
             allLevels = levels;
             renderStationList(levels);
         }
 
+        window.toggleFloodMap = function() {
+            const button = document.getElementById('flood-map-toggle');
+            
+            if (isFloodMapVisible) {
+                if (floodMapOverlay) {
+                    map.removeLayer(floodMapOverlay);
+                    floodMapOverlay = null;
+                }
+                button.textContent = '📍 Flood Map';
+                button.classList.remove('active');
+                isFloodMapVisible = false;
+            } else {
+                // Add flood map overlay
+                const imageUrl = `${API_BASE}/levels/map`;
+                const imageBounds = [[5.9, 79.5], [9.9, 81.9]]; // Approximate Sri Lanka bounds
+                
+                floodMapOverlay = L.imageOverlay(imageUrl, imageBounds, {
+                    opacity: 0.7,
+                    interactive: false
+                }).addTo(map);
+                
+                button.textContent = '❌ Hide Map';
+                button.classList.add('active');
+                isFloodMapVisible = true;
+            }
+        };
+
         function renderStationList(levels) {
             const container = document.getElementById('station-list');
 
-            // Filter by current filter
+            // Apply all filters
             let filteredLevels = levels;
+            
+            // Alert level filter
             if (currentFilter !== 'ALL') {
-                filteredLevels = levels.filter(l => l.alert_status === currentFilter);
+                filteredLevels = filteredLevels.filter(l => l.alert_status === currentFilter);
+            }
+            
+            // Basin filter
+            if (currentBasinFilter !== 'ALL') {
+                const river = allRivers.find(r => r.name === l.river_name);
+                filteredLevels = filteredLevels.filter(l => {
+                    const river = allRivers.find(r => r.name === l.river_name);
+                    return river && river.river_basin_name === currentBasinFilter;
+                });
+            }
+            
+            // River filter
+            if (currentRiverFilter !== 'ALL') {
+                filteredLevels = filteredLevels.filter(l => l.river_name === currentRiverFilter);
+            }
+            
+            // Search filter
+            if (searchQuery) {
+                filteredLevels = filteredLevels.filter(l => 
+                    l.station_name.toLowerCase().includes(searchQuery) || 
+                    l.river_name.toLowerCase().includes(searchQuery)
+                );
             }
 
             // Sort by severity - MAJOR first, then MINOR, ALERT, NORMAL, NO_DATA
@@ -788,7 +917,7 @@
             });
 
             if (sortedLevels.length === 0) {
-                container.innerHTML = '<div class="loading">No stations with this status</div>';
+                container.innerHTML = '<div class="loading">No stations match current filters</div>';
                 return;
             }
 
@@ -797,18 +926,70 @@
                 const trendClass = level.rising_or_falling?.toLowerCase() || '';
                 const trendIcon = level.rising_or_falling === 'Rising' ? '↑' :
                     level.rising_or_falling === 'Falling' ? '↓' : '';
+                
+                const station = allStations.find(s => s.name === level.station_name);
+                const river = allRivers.find(r => r.name === level.river_name);
+                const floodScore = level.flood_score;
+                const rainfall = level.rainfall_mm;
+                const previousLevel = level.previous_water_level;
 
                 return `
                     <div class="station-card ${statusClass}" onclick="focusStation('${level.station_name}')">
+                        ${floodScore !== null ? `<div class="flood-score">Score: ${floodScore.toFixed(1)}</div>` : ''}
+                        
                         <div class="station-name">${level.station_name}</div>
                         <div class="station-river">${level.river_name}</div>
+                        ${river ? `<div class="basin-tag">${river.river_basin_name}</div>` : ''}
+                        
                         <div class="station-details">
                             <span class="water-level">${level.water_level?.toFixed(2) || 'N/A'} m</span>
                             <span class="status-badge ${statusClass}">${level.alert_status}</span>
                         </div>
-                        ${level.rising_or_falling ? `
-                            <div class="trend ${trendClass}">${trendIcon} ${level.rising_or_falling}</div>
+                        
+                        <div class="station-metrics">
+                            ${previousLevel !== null ? `
+                                <div class="metric">
+                                    <span class="metric-label">Previous</span>
+                                    <span class="metric-value">${previousLevel.toFixed(2)}m</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Change</span>
+                                    <span class="metric-value">${level.water_level !== null ? (level.water_level - previousLevel).toFixed(2) : 'N/A'}m</span>
+                                </div>
+                            ` : ''}
+                            ${rainfall !== null ? `
+                                <div class="metric">
+                                    <span class="metric-label">Rainfall</span>
+                                    <span class="metric-value">${rainfall}mm</span>
+                                </div>
+                            ` : ''}
+                            ${level.rising_or_falling ? `
+                                <div class="metric">
+                                    <span class="metric-label">Trend</span>
+                                    <span class="metric-value ${trendClass}">${trendIcon} ${level.rising_or_falling}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${station ? `
+                            <div class="threshold-levels">
+                                <div class="threshold">
+                                    <span>Alert Level:</span>
+                                    <span>${station.alert_level}m</span>
+                                </div>
+                                <div class="threshold">
+                                    <span>Minor Flood:</span>
+                                    <span>${station.minor_flood_level}m</span>
+                                </div>
+                                <div class="threshold">
+                                    <span>Major Flood:</span>
+                                    <span>${station.major_flood_level}m</span>
+                                </div>
+                            </div>
                         ` : ''}
+                        
+                        ${level.remarks ? `<div style="margin-top: 0.5rem; font-size: 0.75rem; color: #ffc107;">📝 ${level.remarks}</div>` : ''}
+                        
                         <button class="chart-btn" onclick="event.stopPropagation(); showChart('${level.station_name}')">
                             📈 View Chart
                         </button>
@@ -820,7 +1001,7 @@
             if (levels.length > 0 && levels[0].timestamp) {
                 const formattedTime = formatTimestamp(levels[0].timestamp);
                 document.getElementById('last-updated').textContent = `Data from: ${formattedTime}`;
-                document.getElementById('update-time').textContent = `Last update: ${formattedTime}`;
+                document.getElementById('update-time').textContent = `Last update: ${formattedTime} | Showing ${sortedLevels.length}/${levels.length} stations`;
             }
         }
 
