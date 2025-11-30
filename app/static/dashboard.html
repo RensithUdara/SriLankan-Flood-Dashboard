@@ -607,9 +607,10 @@
             <div class="sidebar-header">
                 Monitoring Stations
                 <div class="update-time" id="update-time"></div>
-                
-                <input type="text" class="search-box" id="station-search" placeholder="Search stations or rivers..." onkeyup="filterStations()">
-                
+
+                <input type="text" class="search-box" id="station-search" placeholder="Search stations or rivers..."
+                    onkeyup="filterStations()">
+
                 <div class="filter-section">
                     <h4>Alert Level</h4>
                     <div class="filter-buttons">
@@ -620,14 +621,14 @@
                         <button class="filter-btn normal" onclick="setFilter('NORMAL')">Normal</button>
                     </div>
                 </div>
-                
+
                 <div class="filter-section">
                     <h4>River Basin</h4>
                     <select class="filter-dropdown" id="basin-filter" onchange="filterByBasin()">
                         <option value="ALL">All Basins</option>
                     </select>
                 </div>
-                
+
                 <div class="filter-section">
                     <h4>River</h4>
                     <select class="filter-dropdown" id="river-filter" onchange="filterByRiver()">
