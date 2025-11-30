@@ -1153,6 +1153,48 @@
             }
         };
 
+        window.toggleAnalytics = function () {
+            const panel = document.getElementById('analytics-panel');
+            isAnalyticsOpen = !isAnalyticsOpen;
+            
+            if (isAnalyticsOpen) {
+                panel.classList.add('open');
+                updateAnalytics();
+            } else {
+                panel.classList.remove('open');
+            }
+        };
+
+        window.toggleNotifications = function () {
+            notificationsEnabled = !notificationsEnabled;
+            const button = document.getElementById('notif-btn');
+            
+            if (notificationsEnabled) {
+                button.classList.add('active');
+                button.innerHTML = '🔕 Alerts ON';
+                showNotification('Alert notifications enabled', 'success');
+            } else {
+                button.classList.remove('active');
+                button.innerHTML = '🔔 Alerts OFF';
+            }
+        };
+
+        window.toggleExportMenu = function () {
+            const menu = document.getElementById('export-menu');
+            menu.classList.toggle('show');
+        };
+
+        window.toggleComparison = function () {
+            showNotification('Comparison feature coming soon!', 'info');
+        };
+
+        // Close export menu when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.export-menu') && !e.target.closest('[onclick="toggleExportMenu()"]')) {
+                document.getElementById('export-menu').classList.remove('show');
+            }
+        });
+
         function renderStationList(levels) {
             const container = document.getElementById('station-list');
 
