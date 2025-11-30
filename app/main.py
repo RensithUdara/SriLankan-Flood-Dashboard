@@ -15,7 +15,7 @@ app = FastAPI(
     version="1.0.0",
     contact={
         "name": "GitHub Repository",
-        "url": "https://github.com/",
+        "url": "https://github.com/RensithUdara/SriLankan-Flood-Dashboard",
     },
     license_info={
         "name": "MIT",
