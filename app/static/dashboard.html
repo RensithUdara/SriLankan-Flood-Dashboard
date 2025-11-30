@@ -1156,7 +1156,7 @@
         window.toggleAnalytics = function () {
             const panel = document.getElementById('analytics-panel');
             isAnalyticsOpen = !isAnalyticsOpen;
-            
+
             if (isAnalyticsOpen) {
                 panel.classList.add('open');
                 updateAnalytics();
@@ -1168,7 +1168,7 @@
         window.toggleNotifications = function () {
             notificationsEnabled = !notificationsEnabled;
             const button = document.getElementById('notif-btn');
-            
+
             if (notificationsEnabled) {
                 button.classList.add('active');
                 button.innerHTML = '🔕 Alerts ON';
@@ -1623,6 +1623,59 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 5000);
+        }
+
+        function updateAnalytics() {
+            if (!allLevels.length) return;
+
+            // Basic stats
+            const totalStations = allLevels.length;
+            const activeAlerts = allLevels.filter(l => ['MAJOR', 'MINOR', 'ALERT'].includes(l.alert_status)).length;
+            const avgWaterLevel = allLevels.reduce((sum, l) => sum + (l.water_level || 0), 0) / totalStations;
+            const totalRainfall = allLevels.reduce((sum, l) => sum + (l.rainfall_mm || 0), 0);
+
+            document.getElementById('total-stations').textContent = totalStations;
+            document.getElementById('active-alerts').textContent = activeAlerts;
+            document.getElementById('avg-water-level').textContent = `${avgWaterLevel.toFixed(1)}m`;
+            document.getElementById('total-rainfall').textContent = `${totalRainfall.toFixed(0)}mm`;
+
+            // Simple alert distribution
+            updateAlertDistribution();
+        }
+
+        function updateAlertDistribution() {
+            const distribution = {};
+            allLevels.forEach(l => {
+                distribution[l.alert_status] = (distribution[l.alert_status] || 0) + 1;
+            });
+
+            const container = document.getElementById('alert-distribution');
+            const colors = {
+                'MAJOR': '#dc3545',
+                'MINOR': '#fd7e14',
+                'ALERT': '#ffc107',
+                'NORMAL': '#28a745',
+                'NO_DATA': '#6c757d'
+            };
+
+            container.innerHTML = Object.entries(distribution).map(([status, count]) => {
+                const percentage = (count / allLevels.length) * 100;
+                return `
+                    <div style="margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.8rem;">
+                            <span>${status}</span>
+                            <span>${count} (${percentage.toFixed(1)}%)</span>
+                        </div>
+                        <div style="background: #333; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: ${colors[status]}; border-radius: 10px; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add simple basin and trend analysis
+            document.getElementById('basin-analysis').innerHTML = '<p style="color: #888; font-size: 0.8rem;">Basin analysis requires more data processing...</p>';
+            document.getElementById('trend-analysis').innerHTML = '<p style="color: #888; font-size: 0.8rem;">Trend analysis available in future updates...</p>';
         }
 
         // Initial load
