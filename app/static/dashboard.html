@@ -1454,6 +1454,112 @@
             updateMapMarkers(stations, levels);
 
             console.log(`Loaded ${stations.length} stations, ${rivers.length} rivers, ${basins.length} basins`);
+
+            // Load weather data
+            updateWeatherWidget();
+
+            // Check for new alerts
+            checkForNewAlerts(summary);
+        }
+
+        async function updateWeatherWidget() {
+            weatherData = await fetchWeatherData();
+
+            document.getElementById('weather-temp').textContent = `${Math.round(weatherData.main.temp)}°C`;
+            document.getElementById('weather-desc').textContent = weatherData.weather[0].description;
+            document.getElementById('weather-humidity').textContent = `${weatherData.main.humidity}%`;
+            document.getElementById('weather-wind').textContent = `${Math.round(weatherData.wind.speed)} km/h`;
+        }
+
+        function checkForNewAlerts(summary) {
+            const currentAlertCount = summary.reduce((sum, item) => {
+                if (['MAJOR', 'MINOR', 'ALERT'].includes(item.alert_level)) {
+                    return sum + item.count;
+                }
+                return sum;
+            }, 0);
+
+            if (notificationsEnabled && currentAlertCount > lastAlertCount && lastAlertCount > 0) {
+                const newAlerts = currentAlertCount - lastAlertCount;
+                showNotification(`⚠️ ${newAlerts} new flood alert(s) detected!`, 'warning');
+            }
+
+            lastAlertCount = currentAlertCount;
+        }
+
+        window.exportData = function (format) {
+            let data, filename, mimeType;
+
+            switch (format) {
+                case 'csv':
+                    data = exportToCSV();
+                    filename = 'flood_data.csv';
+                    mimeType = 'text/csv';
+                    break;
+                case 'json':
+                    data = JSON.stringify(allLevels, null, 2);
+                    filename = 'flood_data.json';
+                    mimeType = 'application/json';
+                    break;
+                case 'pdf':
+                    generatePDFReport();
+                    return;
+            }
+
+            const blob = new Blob([data], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            document.getElementById('export-menu').classList.remove('show');
+            showNotification(`Data exported as ${format.toUpperCase()}`, 'success');
+        };
+
+        function exportToCSV() {
+            const headers = ['Station Name', 'River', 'Basin', 'Water Level (m)', 'Alert Status', 'Flood Score', 'Trend', 'Rainfall (mm)', 'Timestamp'];
+            const rows = allLevels.map(level => {
+                const river = allRivers.find(r => r.name === level.river_name);
+                return [
+                    level.station_name,
+                    level.river_name,
+                    river ? river.river_basin_name : '',
+                    level.water_level || '',
+                    level.alert_status,
+                    level.flood_score || '',
+                    level.rising_or_falling || '',
+                    level.rainfall_mm || '',
+                    level.timestamp
+                ].map(field => `"${field}"`).join(',');
+            });
+
+            return [headers.join(','), ...rows].join('\n');
+        }
+
+        function generatePDFReport() {
+            window.print();
+            document.getElementById('export-menu').classList.remove('show');
+        }
+
+        window.printDashboard = function () {
+            window.print();
+            document.getElementById('export-menu').classList.remove('show');
+        };
+
+        function showNotification(message, type = 'info') {
+            const toast = document.getElementById('notification-toast');
+            const content = document.getElementById('notification-content');
+
+            toast.className = `notification-toast ${type}`;
+            content.textContent = message;
+
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 5000);
         }
 
         // Initial load
