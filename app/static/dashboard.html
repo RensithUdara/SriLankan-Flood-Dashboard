@@ -830,9 +830,10 @@
                         <option value="ALL">All Rivers</option>
                     </select>
                 </div>
-                
+
                 <div class="weather-widget" id="weather-widget">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <span style="font-size: 0.8rem; font-weight: 600;">🌤️ Weather</span>
                         <span id="weather-temp" style="font-size: 1.2rem;">--°C</span>
                     </div>
@@ -848,7 +849,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Analytics Panel -->
     <div class="analytics-panel" id="analytics-panel">
         <div class="analytics-header">
@@ -874,29 +875,29 @@
                     <div class="stat-label">Total Rainfall</div>
                 </div>
             </div>
-            
+
             <div class="chart-container">
                 <h4 style="margin-bottom: 1rem;">Alert Distribution</h4>
                 <div id="alert-distribution"></div>
             </div>
-            
+
             <div class="chart-container">
                 <h4 style="margin-bottom: 1rem;">Basin Status</h4>
                 <div id="basin-analysis"></div>
             </div>
-            
+
             <div class="chart-container">
                 <h4 style="margin-bottom: 1rem;">Trend Analysis</h4>
                 <div id="trend-analysis"></div>
             </div>
         </div>
     </div>
-    
+
     <!-- Notification Toast -->
     <div class="notification-toast" id="notification-toast">
         <div id="notification-content"></div>
     </div>
-    
+
     <!-- Chart Modal -->
     <div class="modal-overlay" id="chart-modal" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
