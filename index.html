@@ -1226,10 +1226,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // v4 - Enhanced with all API data
-        // Use deployed backend API or fallback to local development
-        const API_BASE = window.location.protocol === 'file:'
-            ? 'https://flood-monitor-yncnkpwl8-rensithudaragonalagoda-3015s-projects.vercel.app/api'
-            : window.location.origin + '/api';
+        const API_BASE = window.location.origin + '/api';
         let currentFilter = 'ALL';
         let currentBasinFilter = 'ALL';
         let currentRiverFilter = 'ALL';
@@ -1719,7 +1716,6 @@
 
             // Basin filter
             if (currentBasinFilter !== 'ALL') {
-                const river = allRivers.find(r => r.name === l.river_name);
                 filteredLevels = filteredLevels.filter(l => {
                     const river = allRivers.find(r => r.name === l.river_name);
                     return river && river.river_basin_name === currentBasinFilter;
@@ -1766,7 +1762,7 @@
 
                 return `
                     <div class="station-card ${statusClass}" onclick="focusStation('${level.station_name}')">
-                        ${floodScore !== null ? `<div class="flood-score">Score: ${floodScore.toFixed(1)}</div>` : ''}
+                        ${floodScore !== null && floodScore !== undefined ? `<div class="flood-score">Score: ${floodScore.toFixed(1)}</div>` : ''}
                         
                         <div class="station-name">${level.station_name}</div>
                         <div class="station-river">${level.river_name}</div>
@@ -1778,17 +1774,17 @@
                         </div>
                         
                         <div class="station-metrics">
-                            ${previousLevel !== null ? `
+                            ${previousLevel !== null && previousLevel !== undefined ? `
                                 <div class="metric">
                                     <span class="metric-label">Previous</span>
                                     <span class="metric-value">${previousLevel.toFixed(2)}m</span>
                                 </div>
                                 <div class="metric">
                                     <span class="metric-label">Change</span>
-                                    <span class="metric-value">${level.water_level !== null ? (level.water_level - previousLevel).toFixed(2) : 'N/A'}m</span>
+                                    <span class="metric-value">${level.water_level !== null && level.water_level !== undefined ? (level.water_level - previousLevel).toFixed(2) : 'N/A'}m</span>
                                 </div>
                             ` : ''}
-                            ${rainfall !== null ? `
+                            ${rainfall !== null && rainfall !== undefined ? `
                                 <div class="metric">
                                     <span class="metric-label">Rainfall</span>
                                     <span class="metric-value">${rainfall}mm</span>
@@ -1866,9 +1862,9 @@
                         ${river ? `<p><strong>Basin:</strong> ${river.river_basin_name}</p>` : ''}
                         <p><strong>Water Level:</strong> ${level?.water_level?.toFixed(2) || 'N/A'} m</p>
                         <p><strong>Status:</strong> ${status}</p>
-                        ${level?.flood_score !== null ? `<p><strong>Flood Score:</strong> ${level.flood_score.toFixed(1)}</p>` : ''}
-                        ${level?.previous_water_level !== null ? `<p><strong>Previous Level:</strong> ${level.previous_water_level.toFixed(2)} m</p>` : ''}
-                        ${level?.rainfall_mm !== null ? `<p><strong>Rainfall:</strong> ${level.rainfall_mm} mm</p>` : ''}
+                        ${level && level.flood_score !== null && level.flood_score !== undefined ? `<p><strong>Flood Score:</strong> ${level.flood_score.toFixed(1)}</p>` : ''}
+                        ${level && level.previous_water_level !== null && level.previous_water_level !== undefined ? `<p><strong>Previous Level:</strong> ${level.previous_water_level.toFixed(2)} m</p>` : ''}
+                        ${level && level.rainfall_mm !== null && level.rainfall_mm !== undefined ? `<p><strong>Rainfall:</strong> ${level.rainfall_mm} mm</p>` : ''}
                         ${level?.rising_or_falling ? `<p><strong>Trend:</strong> ${level.rising_or_falling}</p>` : ''}
                         ${level?.remarks ? `<p><strong>Remarks:</strong> ${level.remarks}</p>` : ''}
                         <hr style="margin: 0.5rem 0; border: 1px solid #333;">
