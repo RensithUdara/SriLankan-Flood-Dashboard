@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -1075,23 +1075,23 @@
             <span class="last-updated" id="last-updated">Loading...</span>
             <span class="header-credits">
                 <a href="https://github.com/RensithUdara" target="_blank">API</a> |
-                <a href="https://github.com/nuuuwan/lk_dmc_vis" target="_blank">Data by nuuuwan</a> |
-                <a href="https://www.dmc.gov.lk" target="_blank">Source: DMC</a>
+                <a href="https://services3.arcgis.com/J7ZFXmR8rSmQ3FGf/arcgis/rest/services/gauges_2_view/FeatureServer/0" target="_blank">Live ArcGIS Gauges</a> |
+                <a href="https://www.dmc.gov.lk" target="_blank">Source: Sri Lanka agencies</a>
             </span>
         </div>
         <div class="header-controls">
             <div class="toolbar">
-                <button class="tool-btn" id="flood-map-toggle" onclick="toggleFloodMap()">📍 Flood Map</button>
-                <button class="tool-btn" onclick="toggleAnalytics()">📊 Analytics</button>
-                <button class="tool-btn" onclick="toggleComparison()">⚖️ Compare</button>
-                <button class="tool-btn" onclick="toggleNotifications()" id="notif-btn">🔔 Alerts</button>
+                <button class="tool-btn" id="flood-map-toggle" onclick="toggleFloodMap()">Map Layer</button>
+                <button class="tool-btn" onclick="toggleAnalytics()">Analytics</button>
+                <button class="tool-btn" id="comparison-btn" onclick="toggleComparison()">Compare</button>
+                <button class="tool-btn" onclick="toggleNotifications()" id="notif-btn">Alerts</button>
                 <div style="position: relative;">
-                    <button class="tool-btn" onclick="toggleExportMenu()">📤 Export</button>
+                    <button class="tool-btn" onclick="toggleExportMenu()">Export</button>
                     <div class="export-menu" id="export-menu">
-                        <div class="export-item" onclick="exportData('csv')">📋 Export CSV</div>
-                        <div class="export-item" onclick="exportData('json')">📄 Export JSON</div>
-                        <div class="export-item" onclick="exportData('pdf')">📕 Export PDF</div>
-                        <div class="export-item" onclick="printDashboard()">🖨️ Print Report</div>
+                        <div class="export-item" onclick="exportData('csv')">Export CSV</div>
+                        <div class="export-item" onclick="exportData('json')">Export JSON</div>
+                        <div class="export-item" onclick="exportData('pdf')">Export PDF</div>
+                        <div class="export-item" onclick="printDashboard()">Print Report</div>
                     </div>
                 </div>
             </div>
@@ -1109,8 +1109,7 @@
                     <input type="text" class="search-box" id="station-search"
                         placeholder="Search stations, rivers, or basins..." onkeyup="handleSearch(event)"
                         onfocus="showSearchSuggestions()" onblur="hideSearchSuggestions()">
-                    <button class="search-clear" id="search-clear" onclick="clearSearch()"
-                        style="display: none;">✕</button>
+                    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">x</button>
                     <div class="search-suggestions" id="search-suggestions"></div>
                 </div>
 
@@ -1140,18 +1139,16 @@
                 </div>
 
                 <div class="weather-widget" id="weather-widget">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="font-size: 0.8rem; font-weight: 600;">🌤️ Weather</span>
-                        <span id="weather-temp" style="font-size: 1.2rem;">--°C</span>
+                    <div class="weather-row">
+                        <span class="weather-title">Weather</span>
+                        <span id="weather-temp" class="weather-temp">-- deg C</span>
                     </div>
-                    <div id="weather-desc" style="font-size: 0.75rem; opacity: 0.9;">Loading...</div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem;">
-                        <span>💧 <span id="weather-humidity">--%</span></span>
-                        <span>💨 <span id="weather-wind">-- km/h</span></span>
+                    <div id="weather-desc" class="weather-desc">Loading...</div>
+                    <div class="weather-meta">
+                        <span>Humidity <span id="weather-humidity">--%</span></span>
+                        <span>Wind <span id="weather-wind">-- km/h</span></span>
                     </div>
-                </div>
-            </div>
+                </div>            </div>
             <div class="station-list" id="station-list">
                 <div class="loading">Loading data...</div>
             </div>
@@ -1161,7 +1158,7 @@
     <!-- Analytics Panel -->
     <div class="analytics-panel" id="analytics-panel">
         <div class="analytics-header">
-            <h3>📊 Analytics Dashboard</h3>
+            <h3>Analytics Dashboard</h3>
             <button class="modal-close" onclick="toggleAnalytics()">&times;</button>
         </div>
         <div class="analytics-content">
@@ -1216,10 +1213,7 @@
             <div class="modal-body" id="modal-body">
                 <span class="modal-loading">Loading chart...</span>
             </div>
-            <div class="modal-footer">
-                Chart by <a href="https://github.com/nuuuwan/lk_dmc_vis" target="_blank">nuuuwan/lk_dmc_vis</a> | Data
-                from <a href="https://www.dmc.gov.lk" target="_blank">Sri Lanka DMC</a>
-            </div>
+            <div class="modal-footer">Chart and history from live ArcGIS gauge records</div>
         </div>
     </div>
 
@@ -1238,6 +1232,7 @@
         let floodMapOverlay = null;
         let isFloodMapVisible = false;
         let isAnalyticsOpen = false;
+        let isComparisonMode = false;
         let notificationsEnabled = false;
         let lastAlertCount = 0;
         let weatherData = null;
@@ -1500,7 +1495,7 @@
                         <div>
                             <div class="suggestion-main">${highlightMatch(match.station_name, query)}</div>
                             <div class="suggestion-detail">
-                                ${highlightMatch(match.river_name, query)} • 
+                                ${highlightMatch(match.river_name, query)} -
                                 ${match.basin ? highlightMatch(match.basin, query) : 'Unknown Basin'}
                             </div>
                         </div>
@@ -1642,7 +1637,7 @@
                     map.removeLayer(floodMapOverlay);
                     floodMapOverlay = null;
                 }
-                button.textContent = '📍 Flood Map';
+                button.textContent = 'Map Layer';
                 button.classList.remove('active');
                 isFloodMapVisible = false;
             } else {
@@ -1655,7 +1650,7 @@
                     interactive: false
                 }).addTo(map);
 
-                button.textContent = '❌ Hide Map';
+                button.textContent = 'Hide Layer';
                 button.classList.add('active');
                 isFloodMapVisible = true;
             }
@@ -1679,11 +1674,11 @@
 
             if (notificationsEnabled) {
                 button.classList.add('active');
-                button.innerHTML = '🔕 Alerts ON';
+                button.innerHTML = 'Alerts ON';
                 showNotification('Alert notifications enabled', 'success');
             } else {
                 button.classList.remove('active');
-                button.innerHTML = '🔔 Alerts OFF';
+                button.innerHTML = 'Alerts';
             }
         };
 
@@ -1693,7 +1688,15 @@
         };
 
         window.toggleComparison = function () {
-            showNotification('Comparison feature coming soon!', 'info');
+            isComparisonMode = !isComparisonMode;
+            const button = document.getElementById('comparison-btn');
+            button.classList.toggle('active', isComparisonMode);
+            showNotification(
+                isComparisonMode
+                    ? 'Comparison mode on: select stations to inspect them on the map.'
+                    : 'Comparison mode off',
+                'info'
+            );
         };
 
         // Close export menu when clicking outside
@@ -1751,8 +1754,8 @@
             container.innerHTML = sortedLevels.map(level => {
                 const statusClass = level.alert_status.toLowerCase().replace('_', '-');
                 const trendClass = level.rising_or_falling?.toLowerCase() || '';
-                const trendIcon = level.rising_or_falling === 'Rising' ? '↑' :
-                    level.rising_or_falling === 'Falling' ? '↓' : '';
+                const trendIcon = level.rising_or_falling === 'Rising' ? 'Up' :
+                    level.rising_or_falling === 'Falling' ? 'Down' : '';
 
                 const station = allStations.find(s => s.name === level.station_name);
                 const river = allRivers.find(r => r.name === level.river_name);
@@ -1815,10 +1818,10 @@
                             </div>
                         ` : ''}
                         
-                        ${level.remarks ? `<div style="margin-top: 0.5rem; font-size: 0.75rem; color: #ffc107;">📝 ${level.remarks}</div>` : ''}
+                        ${level.remarks ? `<div style="margin-top: 0.5rem; font-size: 0.75rem; color: #ffc107;">Note: ${level.remarks}</div>` : ''}
                         
                         <button class="chart-btn" onclick="event.stopPropagation(); showChart('${level.station_name}')">
-                            📈 View Chart
+                            View Chart
                         </button>
                     </div>
                 `;
@@ -1871,8 +1874,8 @@
                         <p><strong>Alert Level:</strong> ${station.alert_level} m</p>
                         <p><strong>Minor Flood:</strong> ${station.minor_flood_level} m</p>
                         <p><strong>Major Flood:</strong> ${station.major_flood_level} m</p>
-                        <button class="popup-chart-btn" onclick="showChart('${station.name}')">📈 View Chart</button>
-                        <button class="popup-chart-btn" onclick="showStationHistory('${station.name}')" style="margin-top: 0.25rem;">📊 History</button>
+                        <button class="popup-chart-btn" onclick="showChart('${station.name}')">View Chart</button>
+                        <button class="popup-chart-btn" onclick="showStationHistory('${station.name}')" style="margin-top: 0.25rem;">History</button>
                     </div>
                 `;
                 markers[station.name].bindPopup(popupContent);
@@ -1896,18 +1899,58 @@
             modalBody.innerHTML = '<span class="modal-loading">Loading chart...</span>';
             modal.classList.add('active');
 
-            // Load chart image
-            const img = new Image();
-            img.onload = function () {
-                modalBody.innerHTML = '';
-                modalBody.appendChild(img);
-            };
-            img.onerror = function () {
+            fetchStationHistory(stationName, 80).then(history => {
+                modalBody.innerHTML = renderHistoryChart(history);
+            }).catch(e => {
+                console.error('Failed to load chart history:', e);
                 modalBody.innerHTML = '<span class="modal-loading">Chart not available for this station</span>';
-            };
-            img.src = `${API_BASE}/levels/chart/${encodeURIComponent(stationName)}`;
-            img.alt = `${stationName} water level chart`;
+            });
         };
+
+        function renderHistoryChart(history) {
+            const points = history
+                .filter(item => item.water_level !== null && item.water_level !== undefined && item.timestamp)
+                .slice()
+                .reverse();
+
+            if (points.length < 2) {
+                return '<span class="modal-loading">Not enough live history to draw a chart</span>';
+            }
+
+            const width = 760;
+            const height = 340;
+            const padding = { top: 24, right: 28, bottom: 46, left: 58 };
+            const values = points.map(item => item.water_level);
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            const xFor = index => padding.left + (index / (points.length - 1)) * (width - padding.left - padding.right);
+            const yFor = value => padding.top + ((max - value) / range) * (height - padding.top - padding.bottom);
+            const line = points.map((item, index) => `${xFor(index).toFixed(1)},${yFor(item.water_level).toFixed(1)}`).join(' ');
+            const latest = points[points.length - 1];
+            const firstTime = formatTimestamp(points[0].timestamp);
+            const latestTime = formatTimestamp(latest.timestamp);
+
+            return `
+                <div style="width: min(88vw, 820px); padding: 1rem;">
+                    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Water level history chart" style="width: 100%; height: auto; display: block;">
+                        <rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="#111827"></rect>
+                        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="#344155"></line>
+                        <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="#344155"></line>
+                        <text x="16" y="${padding.top + 6}" fill="#cbd5e1" font-size="13">${max.toFixed(2)}m</text>
+                        <text x="16" y="${height - padding.bottom + 4}" fill="#cbd5e1" font-size="13">${min.toFixed(2)}m</text>
+                        <polyline points="${line}" fill="none" stroke="#7cc7ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                        ${points.map((item, index) => `<circle cx="${xFor(index).toFixed(1)}" cy="${yFor(item.water_level).toFixed(1)}" r="${index === points.length - 1 ? 5 : 3}" fill="${index === points.length - 1 ? '#ffc107' : '#7cc7ff'}"></circle>`).join('')}
+                        <text x="${padding.left}" y="${height - 16}" fill="#9ca3af" font-size="13">${firstTime}</text>
+                        <text x="${width - padding.right}" y="${height - 16}" fill="#9ca3af" font-size="13" text-anchor="end">${latestTime}</text>
+                    </svg>
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 0.75rem; color: #cbd5e1; font-size: 0.9rem;">
+                        <span>Latest: <strong>${latest.water_level.toFixed(2)}m</strong></span>
+                        <span>Records: ${points.length}</span>
+                    </div>
+                </div>
+            `;
+        }
 
         window.showStationHistory = function (stationName) {
             const modal = document.getElementById('chart-modal');
@@ -2035,7 +2078,7 @@
         async function updateWeatherWidget() {
             weatherData = await fetchWeatherData();
 
-            document.getElementById('weather-temp').textContent = `${Math.round(weatherData.main.temp)}°C`;
+            document.getElementById('weather-temp').textContent = `${Math.round(weatherData.main.temp)} deg C`;
             document.getElementById('weather-desc').textContent = weatherData.weather[0].description;
             document.getElementById('weather-humidity').textContent = `${weatherData.main.humidity}%`;
             document.getElementById('weather-wind').textContent = `${Math.round(weatherData.wind.speed)} km/h`;
@@ -2051,7 +2094,7 @@
 
             if (notificationsEnabled && currentAlertCount > lastAlertCount && lastAlertCount > 0) {
                 const newAlerts = currentAlertCount - lastAlertCount;
-                showNotification(`⚠️ ${newAlerts} new flood alert(s) detected!`, 'warning');
+                showNotification(`Warning: ${newAlerts} new flood alert(s) detected!`, 'warning');
             }
 
             lastAlertCount = currentAlertCount;
@@ -2194,3 +2237,4 @@
 </body>
 
 </html>
+
