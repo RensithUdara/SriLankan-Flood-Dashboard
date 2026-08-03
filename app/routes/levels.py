@@ -50,35 +50,28 @@ async def get_station_history(station_name: str, limit: int = 50):
     if not station:
         raise HTTPException(status_code=404, detail=f"Station '{station_name}' not found")
 
-    docs = await github_data.get_docs_index()
+    levels = await github_data.get_station_water_level_history(station_name, limit)
     readings = []
 
-    for doc in docs[:limit]:
-        data = await github_data.get_water_level_data(doc["id"])
-        if not data or "d_list" not in data:
-            continue
+    for level in levels:
+        water_level = level.get("current_water_level")
+        alert_status = github_data.calculate_alert_status(water_level, station)
+        flood_score = github_data.calculate_flood_score(water_level, station)
 
-        for level in data["d_list"]:
-            if level.get("gauging_station_name", "").lower() == station_name.lower():
-                water_level = level.get("current_water_level")
-                alert_status = github_data.calculate_alert_status(water_level, station)
-                flood_score = github_data.calculate_flood_score(water_level, station)
-
-                readings.append(
-                    WaterLevelReading(
-                        station_name=station_name,
-                        river_name=station["river_name"],
-                        water_level=water_level,
-                        previous_water_level=level.get("previous_water_level"),
-                        alert_status=alert_status,
-                        flood_score=flood_score,
-                        rising_or_falling=level.get("rising_or_falling"),
-                        rainfall_mm=level.get("rainfall_mm"),
-                        remarks=level.get("remarks"),
-                        timestamp=level.get("time_str", ""),
-                    )
-                )
-                break
+        readings.append(
+            WaterLevelReading(
+                station_name=station_name,
+                river_name=station["river_name"],
+                water_level=water_level,
+                previous_water_level=level.get("previous_water_level"),
+                alert_status=alert_status,
+                flood_score=flood_score,
+                rising_or_falling=level.get("rising_or_falling"),
+                rainfall_mm=level.get("rainfall_mm"),
+                remarks=level.get("remarks"),
+                timestamp=level.get("time_str", ""),
+            )
+        )
 
     return readings
 

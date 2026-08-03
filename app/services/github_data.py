@@ -115,6 +115,32 @@ def normalise_arcgis_records(records: list[dict]) -> list[dict]:
     return latest_levels
 
 
+def normalise_arcgis_history(records: list[dict], station_name: str) -> list[dict]:
+    sorted_records = sorted(
+        records,
+        key=lambda r: coerce_timestamp(r.get("CreationDate") or r.get("EditDate")),
+        reverse=True,
+    )
+    readings = []
+    for index, record in enumerate(sorted_records):
+        previous = None
+        if index + 1 < len(sorted_records):
+            previous = to_float(sorted_records[index + 1].get("water_level"))
+        timestamp = coerce_timestamp(record.get("CreationDate") or record.get("EditDate"))
+        readings.append(
+            {
+                "gauging_station_name": station_name,
+                "current_water_level": to_float(record.get("water_level")),
+                "previous_water_level": previous,
+                "rising_or_falling": None,
+                "rainfall_mm": to_float(record.get("rain_fall")),
+                "remarks": None,
+                "time_str": timestamp,
+            }
+        )
+    return readings
+
+
 @cached(lambda: "live_gauge_records")
 async def fetch_live_gauge_records() -> list[dict]:
     params = {
@@ -136,6 +162,28 @@ async def fetch_live_gauge_records() -> list[dict]:
         return [feature.get("attributes", {}) for feature in data.get("features", [])]
 
 
+@cached(lambda station_name, limit=50: f"gauge_history_{station_name.lower()}_{limit}")
+async def fetch_live_gauge_history(station_name: str, limit: int = 50) -> list[dict]:
+    escaped_station = station_name.replace("'", "''")
+    params = {
+        "f": "json",
+        "where": f"gauge='{escaped_station}'",
+        "outFields": "*",
+        "returnGeometry": "false",
+        "resultRecordCount": max(1, min(limit, 500)),
+        "orderByFields": "CreationDate DESC",
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{GAUGE_FEATURE_LAYER_URL}/query",
+            params=params,
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return [feature.get("attributes", {}) for feature in data.get("features", [])]
+
+
 def read_local_gauge_records() -> list[dict]:
     if not LOCAL_GAUGE_JSON_PATH.exists():
         return []
@@ -144,6 +192,20 @@ def read_local_gauge_records() -> list[dict]:
     except (OSError, json.JSONDecodeError):
         return []
     return data.get("records", [])
+
+
+def read_local_gauge_history(station_name: str, limit: int = 50) -> list[dict]:
+    station_key = station_name.lower()
+    records = [
+        record
+        for record in read_local_gauge_records()
+        if str(record.get("gauge") or "").lower() == station_key
+    ]
+    records.sort(
+        key=lambda r: coerce_timestamp(r.get("CreationDate") or r.get("EditDate")),
+        reverse=True,
+    )
+    return records[:limit]
 
 
 @cached(lambda: "gauging_stations")
@@ -223,6 +285,30 @@ async def get_latest_water_levels() -> list[dict]:
         return []
 
     return data["d_list"]
+
+
+async def get_station_water_level_history(station_name: str, limit: int = 50) -> list[dict]:
+    try:
+        records = await fetch_live_gauge_history(station_name, limit)
+    except httpx.HTTPError:
+        records = read_local_gauge_history(station_name, limit)
+
+    if records:
+        return normalise_arcgis_history(records, station_name)
+
+    docs = await get_docs_index()
+    readings = []
+    for doc in docs[:limit]:
+        data = await get_water_level_data(doc["id"])
+        if not data or "d_list" not in data:
+            continue
+
+        for level in data["d_list"]:
+            if level.get("gauging_station_name", "").lower() == station_name.lower():
+                readings.append(level)
+                break
+
+    return readings
 
 
 async def get_station_by_name(name: str) -> dict | None:
