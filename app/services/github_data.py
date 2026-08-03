@@ -1,9 +1,19 @@
 import httpx
+import json
+import os
 from cachetools import TTLCache
+from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 BASE_URL = "https://raw.githubusercontent.com/nuuuwan/lk_dmc_vis/main"
+GAUGE_FEATURE_LAYER_URL = os.getenv(
+    "GAUGE_FEATURE_LAYER_URL",
+    "https://services3.arcgis.com/J7ZFXmR8rSmQ3FGf/arcgis/rest/services/"
+    "gauges_2_view/FeatureServer/0",
+).rstrip("/")
+LOCAL_GAUGE_JSON_PATH = Path(__file__).resolve().parents[3] / "data" / "gauges_2_view.json"
 
 # Cache data for 15 minutes (900 seconds) - matches pipeline update frequency
 cache = TTLCache(maxsize=100, ttl=900)
@@ -32,6 +42,108 @@ async def fetch_json(path: str) -> dict | list | None:
             return response.json()
         except httpx.HTTPError:
             return None
+
+
+def coerce_timestamp(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (int, float)):
+        seconds = float(value)
+        if seconds > 1e12:
+            seconds /= 1000.0
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return ""
+        try:
+            return datetime.fromisoformat(stripped.replace("Z", "+00:00")).isoformat()
+        except ValueError:
+            try:
+                return coerce_timestamp(float(stripped))
+            except ValueError:
+                return stripped
+    return ""
+
+
+def to_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def normalise_arcgis_records(records: list[dict]) -> list[dict]:
+    sorted_records = sorted(
+        records,
+        key=lambda r: coerce_timestamp(r.get("CreationDate") or r.get("EditDate")),
+        reverse=True,
+    )
+    by_gauge: dict[str, list[dict]] = {}
+    for record in sorted_records:
+        gauge = str(record.get("gauge") or "").strip()
+        if not gauge:
+            continue
+        by_gauge.setdefault(gauge, []).append(record)
+
+    latest_levels = []
+    for gauge, gauge_records in by_gauge.items():
+        latest = gauge_records[0]
+        previous = next(
+            (
+                to_float(record.get("water_level"))
+                for record in gauge_records[1:]
+                if to_float(record.get("water_level")) is not None
+            ),
+            None,
+        )
+        timestamp = coerce_timestamp(latest.get("CreationDate") or latest.get("EditDate"))
+        latest_levels.append(
+            {
+                "gauging_station_name": gauge,
+                "current_water_level": to_float(latest.get("water_level")),
+                "previous_water_level": previous,
+                "rising_or_falling": None,
+                "rainfall_mm": to_float(latest.get("rain_fall")),
+                "remarks": None,
+                "time_str": timestamp,
+            }
+        )
+
+    return latest_levels
+
+
+@cached(lambda: "live_gauge_records")
+async def fetch_live_gauge_records() -> list[dict]:
+    params = {
+        "f": "json",
+        "where": os.getenv("GAUGE_WHERE", "1=1"),
+        "outFields": "*",
+        "returnGeometry": "false",
+        "resultRecordCount": 1000,
+        "orderByFields": "CreationDate DESC",
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{GAUGE_FEATURE_LAYER_URL}/query",
+            params=params,
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return [feature.get("attributes", {}) for feature in data.get("features", [])]
+
+
+def read_local_gauge_records() -> list[dict]:
+    if not LOCAL_GAUGE_JSON_PATH.exists():
+        return []
+    try:
+        data = json.loads(LOCAL_GAUGE_JSON_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return data.get("records", [])
 
 
 @cached(lambda: "gauging_stations")
@@ -89,22 +201,24 @@ async def get_water_level_data(doc_id: str) -> dict | None:
 
 
 async def get_latest_water_levels() -> list[dict]:
+    try:
+        records = await fetch_live_gauge_records()
+    except httpx.HTTPError:
+        records = read_local_gauge_records()
+
+    if records:
+        return normalise_arcgis_records(records)
+
     docs = await get_docs_index()
     if not docs:
         return []
 
-    # Get most recent water-level document (skip flood warnings which don't have JSON files)
-    latest_doc = None
-    for doc in docs:
-        if "water-level" in doc["id"]:
-            latest_doc = doc
-            break
-
+    # Fallback to the DMC document index if ArcGIS and local snapshot are unavailable.
+    latest_doc = next((doc for doc in docs if "water-level" in doc["id"]), None)
     if not latest_doc:
         return []
 
     data = await get_water_level_data(latest_doc["id"])
-
     if not data or "d_list" not in data:
         return []
 
